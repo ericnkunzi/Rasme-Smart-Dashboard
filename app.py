@@ -1,119 +1,81 @@
-import os
+from flask import Flask, jsonify, render_template
 import requests
-from flask import Flask, render_template, jsonify
-from dotenv import load_dotenv
-
-load_dotenv()
+import json
+import os
 
 app = Flask(__name__)
 
-KOBO_API_KEY = os.environ.get("KOBO_API_KEY", "7a188f9457864dd166c64b0d070ba96fa95b24fc")
-KOBO_FORM_ID = "aGr5kutzkG7nrHiEyH7vCt"
+# Your KoBoToolbox API info — replace with your real values
+KOBO_API_KEY = "YOUR_KOBO_API_KEY_HERE"
+KOBO_FORM_ID = "YOUR_KOBO_FORM_ID_HERE"
 KOBO_API_URL = f"https://kf.kobotoolbox.org/api/v2/assets/{KOBO_FORM_ID}/data/"
 
-SECTOR_COLORS = {
-    "Energy": "red",
-    "Transport": "blue",
-    "Water and sanitation": "green",
-    "Others": "orange"
-}
-
-STATUS_COLORS = {
-    "Completed": "green",
-    "Ongoing": "blue",
-    "Not started": "gray",
-    "Delayed": "red"
-}
-
-def normalize_sector(sector):
-    sector = sector.lower()
-    if "water" in sector or "sanitation" in sector:
-        return "Water and sanitation"
-    elif "energy" in sector:
-        return "Energy"
-    elif "transport" in sector:
-        return "Transport"
-    else:
-        return "Others"
+# Path to static fallback JSON data file (for testing)
+STATIC_DATA_FILE = "data.json"
 
 def fetch_data():
     headers = {
         "Authorization": f"Token {KOBO_API_KEY}"
     }
-    response = requests.get(KOBO_API_URL, headers=headers)
-    if response.status_code != 200:
-        return []
-    return response.json().get("results", [])
-
-@app.route("/data")
-def get_data():
-    raw_data = fetch_data()
-
-    map_data = []
-    sector_counts = {"Energy": 0, "Transport": 0, "Water and sanitation": 0, "Others": 0}
-    collectors = {}
-    implementation_status = {}
-    projects = set()
-    agencies = set()
-
-    for entry in raw_data:
-        name = entry.get("Name_of_project")
-        sector = normalize_sector(entry.get("Activity_Sector", "Others"))
-        lat = entry.get("latitude")
-        lon = entry.get("longitude")
-        alt = entry.get("altitude")
-        acc = entry.get("accuracy")
-        collector = entry.get("Full_name_of_the_field_contact", "Unknown")
-        status = entry.get("Activity_Implementation_Status", "Unknown")
-        agency = entry.get("Name_of_the_activity_Implementing_Agency", "Unknown")
-
-        if name:
-            projects.add(name)
-
-        if lat and lon:
-            map_data.append({
-                "name": name,
-                "sector": sector,
-                "lat": float(lat),
-                "lon": float(lon),
-                "color": SECTOR_COLORS.get(sector, "gray")
-            })
-
-        sector_counts[sector] += 1
-        agencies.add(agency)
-
-        if collector not in collectors:
-            collectors[collector] = {"count": 0, "sectors": set()}
-        collectors[collector]["count"] += 1
-        collectors[collector]["sectors"].add(sector)
-
-        if status not in implementation_status:
-            implementation_status[status] = 0
-        implementation_status[status] += 1
-
-    sorted_collectors = sorted(collectors.items(), key=lambda x: x[1]["count"], reverse=True)
-    collectors_table = [
-        {
-            "name": name,
-            "count": data["count"],
-            "sectors": list(data["sectors"])
-        } for name, data in sorted_collectors
-    ]
-
-    return jsonify({
-        "map_data": map_data,
-        "sector_counts": sector_counts,
-        "collectors_table": collectors_table,
-        "total_submissions": len(raw_data),
-        "projects": list(projects),
-        "implementation_status": implementation_status,
-        "agencies": list(agencies)
-    })
+    try:
+        response = requests.get(KOBO_API_URL, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        results = data.get("results", [])
+        # You can add code here to transform the data as your dashboard needs
+        return results
+    except Exception as e:
+        print("Error fetching KoBo data:", e)
+        # Fallback: try loading static data from local file for testing
+        if os.path.exists(STATIC_DATA_FILE):
+            print("Loading data from local static file:", STATIC_DATA_FILE)
+            with open(STATIC_DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        else:
+            return []
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+@app.route("/data")
+def data():
+    data = fetch_data()
+    
+    # Example: transform raw KoBo results into dashboard format
+    # This part depends on your actual data structure; here is a dummy example:
 
+    # Dummy processed data to show dashboard structure
+    dashboard_data = {
+        "map_data": [
+            # Replace with your processed project locations and colors
+            {"lat": -1.95, "lon": 30.05, "name": "Project A", "sector": "Water", "color": "blue"},
+            {"lat": -1.94, "lon": 29.99, "name": "Project B", "sector": "Energy", "color": "green"},
+        ],
+        "sector_counts": {
+            "Water": 5,
+            "Energy": 3,
+            "Road": 4,
+            "Agriculture": 2
+        },
+        "implementation_status": {
+            "Completed": 6,
+            "Ongoing": 5,
+            "Not started": 2,
+            "Delayed": 1
+        },
+        "collectors_table": [
+            {"name": "Alice", "count": 5, "sectors": ["Water", "Energy"]},
+            {"name": "Bob", "count": 4, "sectors": ["Road"]},
+            {"name": "Charlie", "count": 3, "sectors": ["Agriculture", "Water"]}
+        ],
+        "total_submissions": 12,
+        "projects": ["Project A", "Project B", "Project C"],
+        "agencies": ["Agency X", "Agency Y", "Agency Z"]
+    }
+
+    # You can customize and replace dashboard_data with real processed data from KoBo here
+    return jsonify(dashboard_data)
+
+if __name__ == "__main__":
+    app.run(debug=True)
