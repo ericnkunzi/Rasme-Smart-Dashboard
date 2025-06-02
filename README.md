@@ -1,31 +1,54 @@
-# Rasme Smart Dashboard 🇷🇼📊
+RASME+ — Smart Monitoring Dashboard
 
-A real-time, interactive project monitoring dashboard for the African Development Bank (AfDB) Rwanda Office. This web app fetches and visualizes KoboToolbox data submitted via the RASME initiative. Built with love, elegance, and automation — no manual updates required!
+RASME+ is a digital, intelligent, and real-time monitoring and evaluation dashboard designed to enhance the existing RASME system used by the African Development Bank in Rwanda.
 
-## 🌍 Features
+This dashboard provides:
 
-- 📍 Live Map of Rwanda with color-coded project markers by Activity Sector (Energy, Transport, Water & Sanitation, Others)
-- 🧩 Interactive tooltips showing Project Name and Sector on map hover
-- 📈 Pie chart of submissions by Activity Sector
-- 🧾 List of submitted Projects (by name)
-- 👤 Table of Top Collectors (with counts and sectors)
-- 📊 Chart of Activity Implementation Status
-- 🏢 List of Implementing Agencies
-- 🔄 Automatically updates in real time from KoboToolbox API
+    🗺️ Geospatial visualization of project sectors (Water & Sanitation, Energy, Transport, Others)
 
-## 🔧 Technologies Used
+    📊 Sector-wise submission statistics with color-coded bars
 
-- HTML + CSS + JavaScript
-- Leaflet.js (for maps)
-- Chart.js (for graphs)
-- Bootstrap (for styling)
-- Python Flask (for backend API proxy)
-- GitHub Pages (frontend hosting)
-- Render.com (free backend hosting)
+    🏅 Leaderboard of top data collectors
 
-## 🚀 Deployment Instructions
+    📈 Submission trend timeline
 
-### 1. Clone this Repository
+    🔄 Automatic refresh every 15 minutes
 
-```bash
-git clone https://github.com/YOUR_USERNAME/Rasme-Smart-Dashboard.git
+    🌍 100% online and mobile-friendly
+
+The data is sourced directly from KoboToolbox using secure API tokens and is displayed through a web interface built using HTML, JavaScript, Leaflet.js, and Chart.js.
+Technologies Used
+
+    HTML/CSS/JavaScript
+
+    Leaflet.js (Map rendering)
+
+    Chart.js (Data visualization)
+
+    GitHub Pages (Free hosting)
+
+    KoboToolbox API (Data source)
+
+Project Maintainer
+
+Eric Nkunzi — IT Officer, African Development Bank – Rwanda Office 🇷🇼
+
+If you have questions or would like to collaborate, please reach out!RASME+ — Smart Monitoring Dashboard
+
+RASME+ is a digital, intelligent, and real-time monitoring and evaluation dashboard designed to enhance the existing RASME system used by the African Development Bank in Rwanda.
+
+This dashboard provides:
+
+    🗺️ Geospatial visualization of project sectors (Water & Sanitation, Energy, Transport, Others)
+
+    📊 Sector-wise submission statistics with color-coded bars
+
+    🏅 Leaderboard of top data collectors
+
+    📈 Submission trend timeline
+
+    🔄 Automatic refresh every 15 minutes
+
+    🌍 100% online and mobile-friendly
+
+The data is sourced directly from KoboToolbox using secure API tokens and is displayed through a web interface built using HTML, JavaScript, Leaflet.js, and Chart.js.
