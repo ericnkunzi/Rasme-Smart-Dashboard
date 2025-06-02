@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KoBo Submissions Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #004c97;
+    }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    #submissionCount {
+      font-size: 1.2em;
+      margin-top: 10px;
+    }
+    #submissions {
+      margin-top: 20px;
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 800px;
+    }
+    #submissions th, #submissions td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    #submissions th {
+      background-color: #004c97;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>KoBo Submissions Viewer</h1>
+  <div id="status">Loading submissions...</div>
+  <div id="submissionCount"></div>
+  <table id="submissions" style="display:none;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Submission Time</th>
+        <th>Collector</th>
+        <th>Sector</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // Replace with your actual API token and form UID
+    const KOBO_TOKEN = "7a188f9457864dd166c64b0d070ba96fa95b24fc";
+    const FORM_UID = "aGr5kutzkG7nrHiEyH7vCt";
+
+    async function fetchSubmissions() {
+      const url = `https://kf.kobotoolbox.org/api/v2/assets/${FORM_UID}/data/`;
+      try {
+        const response = await fetch(url, {
+          headers: {
+            "Authorization": `Token ${KOBO_TOKEN}`
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        const submissions = data.results || data; // in case API returns {results:[]} or array
+
+        document.getElementById('status').textContent = "Submissions loaded successfully.";
+
+        // Show count
+        document.getElementById('submissionCount').textContent =
+          `Total submissions: ${submissions.length}`;
+
+        if (submissions.length === 0) {
+          return;
+        }
+
+        // Show table
+        const tbody = document.querySelector("#submissions tbody");
+        tbody.innerHTML = "";
+        // Show last 5 submissions or less
+        const lastFive = submissions.slice(-5).reverse();
+
+        lastFive.forEach(sub => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${sub._id || sub.id || 'N/A'}</td>
+            <td>${new Date(sub._submission_time || sub.submission_time || '').toLocaleString() || 'N/A'}</td>
+            <td>${sub.collector_name || sub.collector || 'Unknown'}</td>
+            <td>${sub.sector || 'N/A'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('submissions').style.display = "table";
+
+      } catch (error) {
+        document.getElementById('status').textContent = `Error loading submissions: ${error.message}`;
+      }
+    }
+
+    fetchSubmissions();
+  </script>
+</body>
+</html>
