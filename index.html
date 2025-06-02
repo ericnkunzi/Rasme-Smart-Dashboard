@@ -2,113 +2,433 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RASME+ Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha512-sA+eSOGyShQd3XDJmFv5eZry7h0JvPHm+q03jvJpQ/AGy7VgvU9bgZ/q4XnBB9WqBCTFKnIo+a4n6T4mHh/6hQ=="
-    crossorigin=""
-  />
+
+  <!-- Leaflet CSS for map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      margin: 10px;
+      background: #f9f9f9;
     }
 
-    header {
-      background: #1e3a8a;
-      color: white;
-      padding: 1rem;
+    h1 {
       text-align: center;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: column;
-      padding: 1rem;
+      margin-bottom: 20px;
     }
 
     #map {
-      height: 500px;
-      border: 2px solid #ccc;
-      border-radius: 8px;
-      margin-bottom: 2rem;
+      height: 400px;
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      border: 2px solid #333;
+      border-radius: 5px;
     }
 
-    .cards {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
+    .sector-bars {
+      max-width: 900px;
+      margin: 0 auto 30px auto;
     }
 
-    .card {
-      flex: 1;
-      min-width: 200px;
-      background: white;
+    .sector-bar {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .bar-container {
+      background: #ddd;
       border-radius: 10px;
-      padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+      height: 25px;
     }
 
-    .card h3 {
-      margin-top: 0;
-      color: #1e3a8a;
+    .bar-fill {
+      height: 100%;
+      text-align: right;
+      padding-right: 10px;
+      color: white;
+      line-height: 25px;
+      font-weight: bold;
+    }
+
+    .sector-water {
+      background-color: #007bff; /* Blue */
+    }
+
+    .sector-energy {
+      background-color: #ffc107; /* Amber */
+      color: black;
+    }
+
+    .sector-transport {
+      background-color: #28a745; /* Green */
+    }
+
+    .sector-others {
+      background-color: #6c757d; /* Gray */
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 0 auto 10px auto;
+      max-width: 900px;
+      width: 100%;
+      background: white;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 5px #aaa;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #333;
+      color: white;
+    }
+
+    #timelineChart {
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px #aaa;
+    }
+
+    #totalSubmissions {
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      font-weight: bold;
+      font-size: 1.1em;
+      color: #333;
+      text-align: right;
+    }
+
+    footer {
+      text-align: center;
+      color: #666;
+      margin-top: 40px;
+      font-size: 0.9em;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>RASME+ Monitoring Dashboard</h1>
-  </header>
+  <h1>RASME+ Dashboard - Rwanda Projects Monitoring</h1>
 
-  <div class="container">
-    <div id="map"></div>
+  <div id="map"></div>
 
-    <div class="cards">
-      <div class="card">
-        <h3>Total Projects</h3>
-        <p>85</p>
-      </div>
-      <div class="card">
-        <h3>Completed</h3>
-        <p>52</p>
-      </div>
-      <div class="card">
-        <h3>In Progress</h3>
-        <p>25</p>
-      </div>
-      <div class="card">
-        <h3>Pending</h3>
-        <p>8</p>
-      </div>
+  <div class="sector-bars">
+    <div class="sector-bar sector-water">Water & Sanitation: <span id="waterPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="waterBar" class="bar-fill sector-water" style="width: 0%"></div>
+    </div>
+
+    <div class="sector-bar sector-energy">Energy: <span id="energyPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="energyBar" class="bar-fill sector-energy" style="width: 0%"></div>
+    </div>
+
+    <div class="sector-bar sector-transport">Transport: <span id="transportPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="transportBar" class="bar-fill sector-transport" style="width: 0%"></div>
+    </div>
+
+    <div class="sector-bar sector-others">Others: <span id="othersPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="othersBar" class="bar-fill sector-others" style="width: 0%"></div>
     </div>
   </div>
 
+  <h2 style="text-align:center;">Top Data Collectors (by submissions)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Data Collector</th>
+        <th>Submissions</th>
+        <th>Sector(s)</th>
+      </tr>
+    </thead>
+    <tbody id="collectorTableBody">
+      <!-- Filled by JavaScript -->
+    </tbody>
+  </table>
+
+  <div id="totalSubmissions">Total submissions: 0</div>
+
+  <h2 style="text-align:center;">Submissions Timeline (Last 30 days)</h2>
+  <canvas id="timelineChart" height="150"></canvas>
+
+  <footer>
+    &copy; African Development Bank - RASME+ Dashboard
+  </footer>
+
   <!-- Leaflet JS -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha512-XQoYMqMTK8LvdlxUmB3KkUy6Zt27URg4c7soZDHnA4XIdZVtCkGLjC9df9e3O6P9xflU7zddT9Lpw2G6KZx1hA=="
-    crossorigin=""
-  ></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js for timeline chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
-    // Initialize Leaflet map
-    var map = L.map('map').setView([-1.9403, 29.8739], 7); // Centered on Rwanda
+    // Your backend API URL serving KoboToolbox data in JSON format
+    const API_URL = "https://rasmeplus-backend.onrender.com/data";
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    // Initialize Leaflet map centered on Rwanda
+    let map;
+    function initMap() {
+      map = L.map("map").setView([-1.9403, 29.8739], 8);
 
-    // Sample marker (you can load from a database or API later)
-    L.marker([-1.9536, 30.0605])
-      .addTo(map)
-      .bindPopup('<strong>Nyabarongo Hydropower</strong><br>Status: Completed')
-      .openPopup();
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+    }
+
+    // Color per sector
+    const sectorColors = {
+      "Water & Sanitation": "#007bff", // Blue
+      Energy: "#ffc107", // Amber
+      Transport: "#28a745", // Green
+      Others: "#6c757d", // Gray
+    };
+
+    // Add circle markers for each submission
+    function addMarkers(data) {
+      if (!map) return;
+      map.eachLayer((layer) => {
+        if (layer instanceof L.CircleMarker) {
+          map.removeLayer(layer);
+        }
+      });
+
+      data.forEach((item) => {
+        // Check coordinates exist and sector is valid
+        if (
+          item.latitude &&
+          item.longitude &&
+          sectorColors[item.sector]
+        ) {
+          const color = sectorColors[item.sector] || "#000000";
+
+          const circle = L.circleMarker([item.latitude, item.longitude], {
+            radius: 7,
+            fillColor: color,
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.7,
+          }).addTo(map);
+
+          const popupContent = `
+            <b>Sector:</b> ${item.sector}<br/>
+            <b>Collector:</b> ${item.collector}<br/>
+            <b>Date:</b> ${new Date(item.submission_date).toLocaleDateString()}<br/>
+            <b>Score:</b> ${item.score || "N/A"}
+          `;
+          circle.bindPopup(popupContent);
+        }
+      });
+    }
+
+    // Compute submission percentages per sector
+    function computeSectorStats(data) {
+      const counts = {
+        "Water & Sanitation": 0,
+        Energy: 0,
+        Transport: 0,
+        Others: 0,
+      };
+      data.forEach((item) => {
+        if (counts[item.sector] !== undefined) {
+          counts[item.sector]++;
+        } else {
+          counts["Others"]++;
+        }
+      });
+      const total = data.length || 1;
+      const percentages = {};
+      Object.keys(counts).forEach((sector) => {
+        percentages[sector] = ((counts[sector] / total) * 100).toFixed(1);
+      });
+      return { counts, percentages };
+    }
+
+    // Render sector bars with percentages
+    function renderSectorBars(percentages) {
+      document.getElementById("waterPercent").innerText = percentages["Water & Sanitation"] + "%";
+      document.getElementById("waterBar").style.width = percentages["Water & Sanitation"] + "%";
+
+      document.getElementById("energyPercent").innerText = percentages["Energy"] + "%";
+      document.getElementById("energyBar").style.width = percentages["Energy"] + "%";
+
+      document.getElementById("transportPercent").innerText = percentages["Transport"] + "%";
+      document.getElementById("transportBar").style.width = percentages["Transport"] + "%";
+
+      document.getElementById("othersPercent").innerText = percentages["Others"] + "%";
+      document.getElementById("othersBar").style.width = percentages["Others"] + "%";
+    }
+
+    // Compute top data collectors by number of submissions and their sectors
+    function computeTopCollectors(data) {
+      const counts = {};
+      const sectorsPerCollector = {};
+
+      data.forEach((item) => {
+        const c = item.collector || "Unknown";
+        counts[c] = (counts[c] || 0) + 1;
+
+        const sector = item.sector || "Others";
+        if (!sectorsPerCollector[c]) {
+          sectorsPerCollector[c] = new Set();
+        }
+        sectorsPerCollector[c].add(sector);
+      });
+
+      // Convert counts object to array and sort descending
+      const sorted = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      // Map sorted to include sectors string
+      return sorted.map(([collector, count]) => {
+        const sectors = Array.from(sectorsPerCollector[collector]).join(", ");
+        return { collector, count, sectors };
+      });
+    }
+
+    // Render collector leaderboard table
+    function renderCollectorTable(topCollectors) {
+      const tbody = document.getElementById("collectorTableBody");
+      tbody.innerHTML = "";
+      topCollectors.forEach(({ collector, count, sectors }, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${collector}</td>
+          <td>${count}</td>
+          <td>${sectors}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Prepare timeline data for last 30 days submissions
+    function prepareTimelineData(data) {
+      const now = new Date();
+      const days = [];
+      const counts = [];
+
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const dayStr = d.toISOString().slice(0, 10);
+        days.push(dayStr);
+        counts.push(0);
+      }
+
+      data.forEach((item) => {
+        if (item.submission_date) {
+          const dateStr = item.submission_date.slice(0, 10);
+          const idx = days.indexOf(dateStr);
+          if (idx >= 0) {
+            counts[idx]++;
+          }
+        }
+      });
+
+      return { days, counts };
+    }
+
+    // Render timeline chart using Chart.js
+    let timelineChart;
+    function renderTimelineChart(days, counts) {
+      const ctx = document.getElementById("timelineChart").getContext("2d");
+      if (timelineChart) {
+        timelineChart.destroy();
+      }
+      timelineChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: days,
+          datasets: [
+            {
+              label: "Submissions",
+              data: counts,
+              backgroundColor: "#007bff",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              ticks: {
+                maxRotation: 90,
+                minRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 15,
+              },
+            },
+            y: {
+              beginAtZero: true,
+              precision: 0,
+            },
+          },
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+        },
+      });
+    }
+
+    // Main function: fetch data and update dashboard
+    async function updateDashboard() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error("Network response was not ok");
+        const data = await response.json();
+
+        // Add map markers
+        addMarkers(data);
+
+        // Compute and render sector stats
+        const { percentages } = computeSectorStats(data);
+        renderSectorBars(percentages);
+
+        // Top data collectors table
+        const topCollectors = computeTopCollectors(data);
+        renderCollectorTable(topCollectors);
+
+        // Show total submissions below the collectors table
+        document.getElementById("totalSubmissions").innerText = `Total submissions: ${data.length}`;
+
+        // Timeline chart
+        const { days, counts } = prepareTimelineData(data);
+        renderTimelineChart(days, counts);
+
+      } catch (error) {
+        console.error("Error fetching or processing data:", error);
+        alert("Failed to load data from backend. Please check API URL and network.");
+      }
+    }
+
+    // Initialize
+    window.onload = () => {
+      initMap();
+      updateDashboard();
+
+      // Refresh dashboard every 10 minutes
+      setInterval(updateDashboard, 10 * 60 * 1000);
+    };
   </script>
 </body>
 </html>
+
