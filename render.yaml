@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: rasmeplus-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: KOBO_TOKEN
+        value: 7a188f9457864dd166c64b0d070ba96fa95b24fc
+      - key: FORM_UID
+        value: aGr5kutzkG7nrHiEyH7vCt
