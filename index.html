@@ -67,7 +67,8 @@
       background-color: #28a745; /* Green */
     }
 
-    /* Removed .sector-others and any references */
+    /* Replaced .sector-others with .sector-water for consistency */
+    /* Removed .sector-others */
 
     table {
       border-collapse: collapse;
@@ -135,6 +136,12 @@
     <div class="sector-bar sector-transport">Transport: <span id="transportPercent">0%</span></div>
     <div class="bar-container">
       <div id="transportBar" class="bar-fill sector-transport" style="width: 0%"></div>
+    </div>
+
+    <!-- Replaced Others with Water & Sanitation -->
+    <div class="sector-bar sector-water">Water & Sanitation: <span id="othersPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="othersBar" class="bar-fill sector-water" style="width: 0%"></div>
     </div>
   </div>
 
@@ -268,7 +275,9 @@
       document.getElementById("transportPercent").innerText = percentages["Transport"] + "%";
       document.getElementById("transportBar").style.width = percentages["Transport"] + "%";
 
-      // Removed othersPercent and othersBar updates
+      // For the replaced "Others" bar, also show Water & Sanitation data
+      document.getElementById("othersPercent").innerText = percentages["Water & Sanitation"] + "%";
+      document.getElementById("othersBar").style.width = percentages["Water & Sanitation"] + "%";
     }
 
     // Compute top data collectors by submission count
@@ -281,78 +290,80 @@
           sector = "Water & Sanitation";
         }
         if (!collectorMap[collector]) {
-          collectorMap[collector] = { count: 0, sectors: new Set() };
+          collectorMap[collector] = {
+            submissions: 0,
+            sectors: new Set(),
+          };
         }
-        collectorMap[collector].count++;
+        collectorMap[collector].submissions++;
         collectorMap[collector].sectors.add(sector);
       });
 
-      // Convert to array and sort descending by count
-      const collectorsArray = Object.entries(collectorMap).map(([name, info]) => ({
-        name,
-        count: info.count,
+      const collectors = Object.entries(collectorMap).map(([collector, info]) => ({
+        collector,
+        submissions: info.submissions,
         sectors: Array.from(info.sectors).join(", "),
       }));
 
-      collectorsArray.sort((a, b) => b.count - a.count);
-
-      // Return top 10
-      return collectorsArray.slice(0, 10);
+      collectors.sort((a, b) => b.submissions - a.submissions);
+      return collectors.slice(0, 10); // Top 10
     }
 
     // Render top collectors table
-    function renderTopCollectorsTable(collectors) {
+    function renderCollectorTable(collectors) {
       const tbody = document.getElementById("collectorTableBody");
       tbody.innerHTML = "";
-      collectors.forEach((collector, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+      collectors.forEach((col, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
           <td>${i + 1}</td>
-          <td>${collector.name}</td>
-          <td>${collector.count}</td>
-          <td>${collector.sectors}</td>
+          <td>${col.collector}</td>
+          <td>${col.submissions}</td>
+          <td>${col.sectors}</td>
         `;
-        tbody.appendChild(tr);
+        tbody.appendChild(row);
       });
     }
 
-    // Prepare and render submissions timeline chart
+    // Render submissions timeline chart for last 30 days
+    let timelineChart;
     function renderTimelineChart(data) {
-      const ctx = document.getElementById("timelineChart").getContext("2d");
-
-      // Build date counts over the last 30 days
+      // Create a map of date strings to counts
       const today = new Date();
       const dateCounts = {};
+
       for (let i = 29; i >= 0; i--) {
         const d = new Date(today);
-        d.setDate(today.getDate() - i);
+        d.setDate(d.getDate() - i);
         const key = d.toISOString().slice(0, 10);
         dateCounts[key] = 0;
       }
 
       data.forEach((item) => {
-        const dateKey = item.submission_date ? item.submission_date.slice(0, 10) : null;
-        if (dateKey && dateCounts.hasOwnProperty(dateKey)) {
-          dateCounts[dateKey]++;
+        const subDate = item.submission_date?.slice(0, 10);
+        if (subDate && subDate in dateCounts) {
+          dateCounts[subDate]++;
         }
       });
 
       const labels = Object.keys(dateCounts);
       const counts = Object.values(dateCounts);
 
-      if (window.timelineChartInstance) {
-        window.timelineChartInstance.destroy();
+      const ctx = document.getElementById("timelineChart").getContext("2d");
+      if (timelineChart) {
+        timelineChart.destroy();
       }
-
-      window.timelineChartInstance = new Chart(ctx, {
-        type: "bar",
+      timelineChart = new Chart(ctx, {
+        type: "line",
         data: {
-          labels,
+          labels: labels,
           datasets: [
             {
-              label: "Submissions",
+              label: "Submissions per Day",
               data: counts,
-              backgroundColor: "#007bff",
+              fill: false,
+              borderColor: "#007bff",
+              tension: 0.1,
             },
           ],
         },
@@ -369,42 +380,41 @@
             },
             y: {
               beginAtZero: true,
-              stepSize: 1,
+              precision: 0,
             },
           },
         },
       });
     }
 
-    // Update total submissions count
-    function updateTotalSubmissions(count) {
-      document.getElementById("totalSubmissions").innerText = `Total submissions: ${count}`;
-    }
-
-    // Fetch data and update dashboard
+    // Main fetch and render function
     async function loadData() {
       try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error("Failed to fetch data");
-        const data = await response.json();
+        const res = await fetch(API_URL);
+        const data = await res.json();
 
+        // Add markers to map
         addMarkers(data);
 
+        // Compute and render sector stats bars
         const { counts, percentages } = computeSectorStats(data);
         renderSectorBars(percentages);
 
+        // Render top collectors table
         const topCollectors = getTopCollectors(data);
-        renderTopCollectorsTable(topCollectors);
+        renderCollectorTable(topCollectors);
 
+        // Update total submissions
+        document.getElementById("totalSubmissions").innerText = `Total submissions: ${data.length}`;
+
+        // Render timeline chart
         renderTimelineChart(data);
-
-        updateTotalSubmissions(data.length);
       } catch (error) {
-        console.error("Error loading data:", error);
-        alert("Failed to load dashboard data. Please try again later.");
+        console.error("Failed to fetch or render data:", error);
       }
     }
 
+    // Initialize map and load data on page load
     window.onload = () => {
       initMap();
       loadData();
