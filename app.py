@@ -1,4 +1,3 @@
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 import os
@@ -15,10 +14,10 @@ HEADERS = {
     "Authorization": f"Token {KOBO_TOKEN}"
 }
 
-# Normalize sector names to 4 main categories
+# Normalize sector names to 3 main categories, treating all other as "Water & Sanitation"
 def normalize_sector(sector_raw):
     if not sector_raw:
-        return "Others"
+        return "Water & Sanitation"
     sector = sector_raw.strip().lower()
     if sector in ["energie", "energy"]:
         return "Energy"
@@ -27,7 +26,7 @@ def normalize_sector(sector_raw):
     elif sector == "transport":
         return "Transport"
     else:
-        return "Others"
+        return "Water & Sanitation"
 
 @app.route("/")
 def home():
@@ -52,8 +51,7 @@ def get_data():
                 lat = float(geo[0])
                 lon = float(geo[1])
             else:
-                # skip entries without valid geo location
-                continue
+                continue  # skip entries without valid geo location
 
             sector_raw = item.get("info_activity/group_description_act/sector_activity", "")
             sector = normalize_sector(sector_raw)
