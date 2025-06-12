@@ -139,9 +139,9 @@
       <div id="transportBar" class="bar-fill sector-transport" style="width: 0%"></div>
     </div>
 
-    <div class="sector-bar sector-others">Others: <span id="othersPercent">0%</span></div>
+    <div class="sector-bar sector-water">Water & Sanitation: <span id="waterPercent">0%</span></div>
     <div class="bar-container">
-      <div id="othersBar" class="bar-fill sector-others" style="width: 0%"></div>
+      <div id="waterBar" class="bar-fill sector-water" style="width: 0%"></div>
     </div>
   </div>
 
@@ -242,13 +242,13 @@
         "Water & Sanitation": 0,
         Energy: 0,
         Transport: 0,
-        Others: 0,
+        Water & Sanitation: 0,
       };
       data.forEach((item) => {
         if (counts[item.sector] !== undefined) {
           counts[item.sector]++;
         } else {
-          counts["Others"]++;
+          counts["Water & Sanitation"]++;
         }
       });
       const total = data.length || 1;
@@ -283,7 +283,7 @@
         const c = item.collector || "Unknown";
         counts[c] = (counts[c] || 0) + 1;
 
-        const sector = item.sector || "Others";
+        const sector = item.sector || "Water & Sanitation";
         if (!sectorsPerCollector[c]) {
           sectorsPerCollector[c] = new Set();
         }
