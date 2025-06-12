@@ -1,172 +1,414 @@
-<script>
-  // Color map stays the same
-  const sectorColors = {
-    "Water & Sanitation": "#007bff",  // blue
-    Energy: "#28a745",                 // green
-    Transport: "#ffc107",              // yellow
-  };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RASME+ Dashboard</title>
 
-  // Normalize various sector name variants to one standard string
-  function normalizeSector(sector) {
-    if (!sector) return "Unknown";
+  <!-- Leaflet CSS for map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    const s = sector.toLowerCase().trim();
-
-    // Normalize all water-related variations to "Water & Sanitation"
-    if (
-      s === "water & sanitation" ||
-      s === "water & sanitation" ||
-      s === "water & sanitation" ||
-      s === "water & sanitation" ||
-      s === "water and sanitation" ||
-      s === "water sanitation" ||
-      s === "water" ||
-      s === "water & sanitation" ||
-      s === "water & sanitation"
-    ) {
-      return "Water & Sanitation";
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+      background: #f9f9f9;
     }
 
-    // Normalize Energy
-    if (s === "energy") return "Energy";
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-    // Normalize Transport
-    if (s === "transport") return "Transport";
+    #map {
+      height: 400px;
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      border: 2px solid #333;
+      border-radius: 5px;
+    }
 
-    // For anything else, return as-is but capitalized nicely (optional)
-    return sector;
-  }
+    .sector-bars {
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+    }
 
-  // Update sector progress bars with normalized sector names
-  function updateSectorBars(data) {
-    const counts = {
-      "Water & Sanitation": 0,
-      Energy: 0,
-      Transport: 0,
+    .sector-bar {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .bar-container {
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      height: 25px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      text-align: right;
+      padding-right: 10px;
+      color: white;
+      line-height: 25px;
+      font-weight: bold;
+    }
+
+    .sector-water {
+      background-color: #007bff; /* Blue */
+    }
+
+    .sector-energy {
+      background-color: #ffc107; /* Amber */
+      color: black;
+    }
+
+    .sector-transport {
+      background-color: #28a745; /* Green */
+    }
+
+    /* Removed .sector-others and any references */
+
+    table {
+      border-collapse: collapse;
+      margin: 0 auto 10px auto;
+      max-width: 900px;
+      width: 100%;
+      background: white;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 5px #aaa;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #333;
+      color: white;
+    }
+
+    #timelineChart {
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px #aaa;
+    }
+
+    #totalSubmissions {
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      font-weight: bold;
+      font-size: 1.1em;
+      color: #333;
+      text-align: right;
+    }
+
+    footer {
+      text-align: center;
+      color: #666;
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>RASME+ Dashboard - Rwanda Projects Monitoring</h1>
+
+  <div id="map"></div>
+
+  <div class="sector-bars">
+    <div class="sector-bar sector-water">Water & Sanitation: <span id="waterPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="waterBar" class="bar-fill sector-water" style="width: 0%"></div>
+    </div>
+
+    <div class="sector-bar sector-energy">Energy: <span id="energyPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="energyBar" class="bar-fill sector-energy" style="width: 0%"></div>
+    </div>
+
+    <div class="sector-bar sector-transport">Transport: <span id="transportPercent">0%</span></div>
+    <div class="bar-container">
+      <div id="transportBar" class="bar-fill sector-transport" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <h2 style="text-align:center;">Top Data Collectors (by submissions)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Data Collector</th>
+        <th>Submissions</th>
+        <th>Sector(s)</th>
+      </tr>
+    </thead>
+    <tbody id="collectorTableBody">
+      <!-- Filled by JavaScript -->
+    </tbody>
+  </table>
+
+  <div id="totalSubmissions">Total submissions: 0</div>
+
+  <h2 style="text-align:center;">Submissions Timeline (Last 30 days)</h2>
+  <canvas id="timelineChart" height="150"></canvas>
+
+  <footer>
+    &copy; African Development Bank - RASME+ Dashboard
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js for timeline chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // Your backend API URL serving KoboToolbox data in JSON format
+    const API_URL = "https://rasmeplus-backend.onrender.com/data";
+
+    // Initialize Leaflet map centered on Rwanda
+    let map;
+    function initMap() {
+      map = L.map("map").setView([-1.9403, 29.8739], 8);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+    }
+
+    // Color per sector
+    const sectorColors = {
+      "Water & Sanitation": "#007bff", // Blue
+      Energy: "#ffc107", // Amber
+      Transport: "#28a745", // Green
+      // Removed "Others"
     };
 
-    data.forEach(({ sector }) => {
-      const normalized = normalizeSector(sector);
-      if (counts[normalized] !== undefined) {
-        counts[normalized]++;
-      }
-    });
-
-    const total = data.length || 1;
-
-    for (const sector in counts) {
-      const count = counts[sector];
-      const percent = Math.round((count / total) * 100);
-
-      // ID in HTML is sector name with lowercase and no spaces or special chars
-      const barId = sector.toLowerCase().replace(/ & /g, "").replace(/\s/g, "") + "Bar";
-      const percentId = sector.toLowerCase().replace(/ & /g, "").replace(/\s/g, "") + "Percent";
-
-      const bar = document.getElementById(barId);
-      const percentLabel = document.getElementById(percentId);
-
-      if (bar && percentLabel) {
-        bar.style.width = percent + "%";
-        percentLabel.textContent = percent + "%";
-      }
-    }
-  }
-
-  // Add markers to map with normalized sectors and color assignment
-  function addMarkers(data) {
-    data.forEach((item) => {
-      const sector = normalizeSector(item.sector);
-      const color = sectorColors[sector] || "#333";
-
-      if (item.latitude && item.longitude && sectorColors[sector]) {
-        L.circleMarker([item.latitude, item.longitude], {
-          radius: 6,
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.7,
-          weight: 1.5,
-        })
-          .bindPopup(
-            `<b>Collector:</b> ${item.collector}<br />
-             <b>Sector:</b> ${sector}<br />
-             <b>Date:</b> ${new Date(item.date).toLocaleDateString()}`
-          )
-          .addTo(map);
-      }
-    });
-  }
-
-  // Update Top Data Collectors table with normalized sectors
-  function updateCollectorsTable(data) {
-    // Group by collector and sector, but normalize sector names
-    const collectorMap = {};
-
-    data.forEach((item) => {
-      const collector = item.collector || "Unknown";
-      const sector = normalizeSector(item.sector);
-
-      if (!collectorMap[collector]) {
-        collectorMap[collector] = {};
-      }
-
-      if (!collectorMap[collector][sector]) {
-        collectorMap[collector][sector] = 0;
-      }
-
-      collectorMap[collector][sector]++;
-    });
-
-    // Clear previous table body
-    const tbody = document.getElementById("collectorsTableBody");
-    tbody.innerHTML = "";
-
-    // Convert collectorMap to array of collectors with total submissions and sector counts
-    const collectorArray = Object.entries(collectorMap).map(([collector, sectors]) => {
-      let total = 0;
-      for (const count of Object.values(sectors)) {
-        total += count;
-      }
-      return { collector, sectors, total };
-    });
-
-    // Sort by total descending
-    collectorArray.sort((a, b) => b.total - a.total);
-
-    // Build table rows with sector data replaced accordingly
-    collectorArray.forEach(({ collector, sectors, total }) => {
-      const row = document.createElement("tr");
-
-      const collectorCell = document.createElement("td");
-      collectorCell.textContent = collector;
-      row.appendChild(collectorCell);
-
-      // Create one cell per sector (Water & Sanitation, Energy, Transport)
-      ["Water & Sanitation", "Energy", "Transport"].forEach((sectorName) => {
-        const cell = document.createElement("td");
-        cell.textContent = sectors[sectorName] || 0;
-        row.appendChild(cell);
+    // Add circle markers for each submission
+    function addMarkers(data) {
+      if (!map) return;
+      map.eachLayer((layer) => {
+        if (layer instanceof L.CircleMarker) {
+          map.removeLayer(layer);
+        }
       });
 
-      // Total submissions cell
-      const totalCell = document.createElement("td");
-      totalCell.textContent = total;
-      row.appendChild(totalCell);
+      data.forEach((item) => {
+        // Replace any sector "Others" or undefined with "Water & Sanitation"
+        let sector = item.sector;
+        if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
+          sector = "Water & Sanitation";
+        }
+        if (
+          item.latitude &&
+          item.longitude &&
+          sectorColors[sector]
+        ) {
+          const color = sectorColors[sector] || "#000000";
 
-      tbody.appendChild(row);
-    });
-  }
+          const circle = L.circleMarker([item.latitude, item.longitude], {
+            radius: 7,
+            fillColor: color,
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.7,
+          }).addTo(map);
 
-  // Example data loading & rendering function, keep your existing logic
-  async function loadDataAndRender() {
-    const data = await fetchDataFromAPI(); // Your existing API fetch, unchanged
+          const popupContent = `
+            <b>Sector:</b> ${sector}<br/>
+            <b>Collector:</b> ${item.collector}<br/>
+            <b>Date:</b> ${new Date(item.submission_date).toLocaleDateString()}<br/>
+            <b>Score:</b> ${item.score || "N/A"}
+          `;
+          circle.bindPopup(popupContent);
+        }
+      });
+    }
 
-    // Normalize and update UI parts with normalized data
-    updateSectorBars(data);
-    updateCollectorsTable(data);
-    addMarkers(data);
+    // Compute submission percentages per sector
+    function computeSectorStats(data) {
+      const counts = {
+        "Water & Sanitation": 0,
+        Energy: 0,
+        Transport: 0,
+      };
+      data.forEach((item) => {
+        let sector = item.sector;
+        if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
+          sector = "Water & Sanitation";
+        }
+        if (counts[sector] !== undefined) {
+          counts[sector]++;
+        }
+      });
+      const total = data.length || 1;
+      const percentages = {};
+      Object.keys(counts).forEach((sector) => {
+        percentages[sector] = ((counts[sector] / total) * 100).toFixed(1);
+      });
+      return { counts, percentages };
+    }
 
-    // Other UI updates remain as is
-  }
+    // Render sector bars with percentages
+    function renderSectorBars(percentages) {
+      document.getElementById("waterPercent").innerText = percentages["Water & Sanitation"] + "%";
+      document.getElementById("waterBar").style.width = percentages["Water & Sanitation"] + "%";
 
-  // Call loadDataAndRender somewhere in your code as before
-</script>
+      document.getElementById("energyPercent").innerText = percentages["Energy"] + "%";
+      document.getElementById("energyBar").style.width = percentages["Energy"] + "%";
+
+      document.getElementById("transportPercent").innerText = percentages["Transport"] + "%";
+      document.getElementById("transportBar").style.width = percentages["Transport"] + "%";
+
+      // Removed othersPercent and othersBar updates
+    }
+
+    // Compute top data collectors by submission count
+    function getTopCollectors(data) {
+      const collectorMap = {};
+      data.forEach((item) => {
+        const collector = item.collector || "Unknown";
+        let sector = item.sector;
+        if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
+          sector = "Water & Sanitation";
+        }
+        if (!collectorMap[collector]) {
+          collectorMap[collector] = { count: 0, sectors: new Set() };
+        }
+        collectorMap[collector].count++;
+        collectorMap[collector].sectors.add(sector);
+      });
+
+      // Convert to array and sort descending by count
+      const collectorsArray = Object.entries(collectorMap).map(([name, info]) => ({
+        name,
+        count: info.count,
+        sectors: Array.from(info.sectors).join(", "),
+      }));
+
+      collectorsArray.sort((a, b) => b.count - a.count);
+
+      // Return top 10
+      return collectorsArray.slice(0, 10);
+    }
+
+    // Render top collectors table
+    function renderTopCollectorsTable(collectors) {
+      const tbody = document.getElementById("collectorTableBody");
+      tbody.innerHTML = "";
+      collectors.forEach((collector, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${collector.name}</td>
+          <td>${collector.count}</td>
+          <td>${collector.sectors}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Prepare and render submissions timeline chart
+    function renderTimelineChart(data) {
+      const ctx = document.getElementById("timelineChart").getContext("2d");
+
+      // Build date counts over the last 30 days
+      const today = new Date();
+      const dateCounts = {};
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        dateCounts[key] = 0;
+      }
+
+      data.forEach((item) => {
+        const dateKey = item.submission_date ? item.submission_date.slice(0, 10) : null;
+        if (dateKey && dateCounts.hasOwnProperty(dateKey)) {
+          dateCounts[dateKey]++;
+        }
+      });
+
+      const labels = Object.keys(dateCounts);
+      const counts = Object.values(dateCounts);
+
+      if (window.timelineChartInstance) {
+        window.timelineChartInstance.destroy();
+      }
+
+      window.timelineChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Submissions",
+              data: counts,
+              backgroundColor: "#007bff",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              ticks: {
+                maxRotation: 90,
+                minRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 15,
+              },
+            },
+            y: {
+              beginAtZero: true,
+              stepSize: 1,
+            },
+          },
+        },
+      });
+    }
+
+    // Update total submissions count
+    function updateTotalSubmissions(count) {
+      document.getElementById("totalSubmissions").innerText = `Total submissions: ${count}`;
+    }
+
+    // Fetch data and update dashboard
+    async function loadData() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error("Failed to fetch data");
+        const data = await response.json();
+
+        addMarkers(data);
+
+        const { counts, percentages } = computeSectorStats(data);
+        renderSectorBars(percentages);
+
+        const topCollectors = getTopCollectors(data);
+        renderTopCollectorsTable(topCollectors);
+
+        renderTimelineChart(data);
+
+        updateTotalSubmissions(data.length);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        alert("Failed to load dashboard data. Please try again later.");
+      }
+    }
+
+    window.onload = () => {
+      initMap();
+      loadData();
+    };
+  </script>
+</body>
+</html>
