@@ -67,9 +67,8 @@
       background-color: #28a745; /* Green */
     }
 
-    .sector-others {
-      background-color: #6c757d; /* Gray */
-    }
+    /* Replaced .sector-others with .sector-water for consistency */
+    /* Removed .sector-others */
 
     table {
       border-collapse: collapse;
@@ -139,9 +138,10 @@
       <div id="transportBar" class="bar-fill sector-transport" style="width: 0%"></div>
     </div>
 
-    <div class="sector-bar sector-others">Others: <span id="othersPercent">0%</span></div>
+    <!-- Replaced Others with Water & Sanitation -->
+    <div class="sector-bar sector-water">Water & Sanitation: <span id="othersPercent">0%</span></div>
     <div class="bar-container">
-      <div id="othersBar" class="bar-fill sector-others" style="width: 0%"></div>
+      <div id="othersBar" class="bar-fill sector-water" style="width: 0%"></div>
     </div>
   </div>
 
@@ -195,7 +195,7 @@
       "Water & Sanitation": "#007bff", // Blue
       Energy: "#ffc107", // Amber
       Transport: "#28a745", // Green
-      Others: "#6c757d", // Gray
+      // Removed "Others"
     };
 
     // Add circle markers for each submission
@@ -208,13 +208,17 @@
       });
 
       data.forEach((item) => {
-        // Check coordinates exist and sector is valid
+        // Replace any sector "Others" or undefined with "Water & Sanitation"
+        let sector = item.sector;
+        if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
+          sector = "Water & Sanitation";
+        }
         if (
           item.latitude &&
           item.longitude &&
-          sectorColors[item.sector]
+          sectorColors[sector]
         ) {
-          const color = sectorColors[item.sector] || "#000000";
+          const color = sectorColors[sector] || "#000000";
 
           const circle = L.circleMarker([item.latitude, item.longitude], {
             radius: 7,
@@ -226,7 +230,7 @@
           }).addTo(map);
 
           const popupContent = `
-            <b>Sector:</b> ${item.sector}<br/>
+            <b>Sector:</b> ${sector}<br/>
             <b>Collector:</b> ${item.collector}<br/>
             <b>Date:</b> ${new Date(item.submission_date).toLocaleDateString()}<br/>
             <b>Score:</b> ${item.score || "N/A"}
@@ -242,13 +246,14 @@
         "Water & Sanitation": 0,
         Energy: 0,
         Transport: 0,
-        Others: 0,
       };
       data.forEach((item) => {
-        if (counts[item.sector] !== undefined) {
-          counts[item.sector]++;
-        } else {
-          counts["Others"]++;
+        let sector = item.sector;
+        if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
+          sector = "Water & Sanitation";
+        }
+        if (counts[sector] !== undefined) {
+          counts[sector]++;
         }
       });
       const total = data.length || 1;
@@ -270,97 +275,95 @@
       document.getElementById("transportPercent").innerText = percentages["Transport"] + "%";
       document.getElementById("transportBar").style.width = percentages["Transport"] + "%";
 
-      document.getElementById("othersPercent").innerText = percentages["Others"] + "%";
-      document.getElementById("othersBar").style.width = percentages["Others"] + "%";
+      // For the replaced "Others" bar, also show Water & Sanitation data
+      document.getElementById("othersPercent").innerText = percentages["Water & Sanitation"] + "%";
+      document.getElementById("othersBar").style.width = percentages["Water & Sanitation"] + "%";
     }
 
-    // Compute top data collectors by number of submissions and their sectors
-    function computeTopCollectors(data) {
-      const counts = {};
-      const sectorsPerCollector = {};
-
+    // Compute top data collectors by submission count
+    function getTopCollectors(data) {
+      const collectorMap = {};
       data.forEach((item) => {
-        const c = item.collector || "Unknown";
-        counts[c] = (counts[c] || 0) + 1;
-
-        const sector = item.sector || "Others";
-        if (!sectorsPerCollector[c]) {
-          sectorsPerCollector[c] = new Set();
+        const collector = item.collector || "Unknown";
+        let sector = item.sector;
+        if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
+          sector = "Water & Sanitation";
         }
-        sectorsPerCollector[c].add(sector);
+        if (!collectorMap[collector]) {
+          collectorMap[collector] = {
+            submissions: 0,
+            sectors: new Set(),
+          };
+        }
+        collectorMap[collector].submissions++;
+        collectorMap[collector].sectors.add(sector);
       });
 
-      // Convert counts object to array and sort descending
-      const sorted = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
+      const collectors = Object.entries(collectorMap).map(([collector, info]) => ({
+        collector,
+        submissions: info.submissions,
+        sectors: Array.from(info.sectors).join(", "),
+      }));
 
-      // Map sorted to include sectors string
-      return sorted.map(([collector, count]) => {
-        const sectors = Array.from(sectorsPerCollector[collector]).join(", ");
-        return { collector, count, sectors };
-      });
+      collectors.sort((a, b) => b.submissions - a.submissions);
+      return collectors.slice(0, 10); // Top 10
     }
 
-    // Render collector leaderboard table
-    function renderCollectorTable(topCollectors) {
+    // Render top collectors table
+    function renderCollectorTable(collectors) {
       const tbody = document.getElementById("collectorTableBody");
       tbody.innerHTML = "";
-      topCollectors.forEach(({ collector, count, sectors }, index) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${collector}</td>
-          <td>${count}</td>
-          <td>${sectors}</td>
+      collectors.forEach((col, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${col.collector}</td>
+          <td>${col.submissions}</td>
+          <td>${col.sectors}</td>
         `;
-        tbody.appendChild(tr);
+        tbody.appendChild(row);
       });
     }
 
-    // Prepare timeline data for last 30 days submissions
-    function prepareTimelineData(data) {
-      const now = new Date();
-      const days = [];
-      const counts = [];
+    // Render submissions timeline chart for last 30 days
+    let timelineChart;
+    function renderTimelineChart(data) {
+      // Create a map of date strings to counts
+      const today = new Date();
+      const dateCounts = {};
 
       for (let i = 29; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(now.getDate() - i);
-        const dayStr = d.toISOString().slice(0, 10);
-        days.push(dayStr);
-        counts.push(0);
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        dateCounts[key] = 0;
       }
 
       data.forEach((item) => {
-        if (item.submission_date) {
-          const dateStr = item.submission_date.slice(0, 10);
-          const idx = days.indexOf(dateStr);
-          if (idx >= 0) {
-            counts[idx]++;
-          }
+        const subDate = item.submission_date?.slice(0, 10);
+        if (subDate && subDate in dateCounts) {
+          dateCounts[subDate]++;
         }
       });
 
-      return { days, counts };
-    }
+      const labels = Object.keys(dateCounts);
+      const counts = Object.values(dateCounts);
 
-    // Render timeline chart using Chart.js
-    let timelineChart;
-    function renderTimelineChart(days, counts) {
       const ctx = document.getElementById("timelineChart").getContext("2d");
       if (timelineChart) {
         timelineChart.destroy();
       }
       timelineChart = new Chart(ctx, {
-        type: "bar",
+        type: "line",
         data: {
-          labels: days,
+          labels: labels,
           datasets: [
             {
-              label: "Submissions",
+              label: "Submissions per Day",
               data: counts,
-              backgroundColor: "#007bff",
+              fill: false,
+              borderColor: "#007bff",
+              tension: 0.1,
             },
           ],
         },
@@ -380,55 +383,42 @@
               precision: 0,
             },
           },
-          plugins: {
-            legend: {
-              display: false,
-            },
-          },
         },
       });
     }
 
-    // Main function: fetch data and update dashboard
-    async function updateDashboard() {
+    // Main fetch and render function
+    async function loadData() {
       try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error("Network response was not ok");
-        const data = await response.json();
+        const res = await fetch(API_URL);
+        const data = await res.json();
 
-        // Add map markers
+        // Add markers to map
         addMarkers(data);
 
-        // Compute and render sector stats
-        const { percentages } = computeSectorStats(data);
+        // Compute and render sector stats bars
+        const { counts, percentages } = computeSectorStats(data);
         renderSectorBars(percentages);
 
-        // Top data collectors table
-        const topCollectors = computeTopCollectors(data);
+        // Render top collectors table
+        const topCollectors = getTopCollectors(data);
         renderCollectorTable(topCollectors);
 
-        // Show total submissions below the collectors table
+        // Update total submissions
         document.getElementById("totalSubmissions").innerText = `Total submissions: ${data.length}`;
 
-        // Timeline chart
-        const { days, counts } = prepareTimelineData(data);
-        renderTimelineChart(days, counts);
-
+        // Render timeline chart
+        renderTimelineChart(data);
       } catch (error) {
-        console.error("Error fetching or processing data:", error);
-        alert("Failed to load data from backend. Please check API URL and network.");
+        console.error("Failed to fetch or render data:", error);
       }
     }
 
-    // Initialize
+    // Initialize map and load data on page load
     window.onload = () => {
       initMap();
-      updateDashboard();
-
-      // Refresh dashboard every 10 minutes
-      setInterval(updateDashboard, 10 * 60 * 1000);
+      loadData();
     };
   </script>
 </body>
 </html>
-
