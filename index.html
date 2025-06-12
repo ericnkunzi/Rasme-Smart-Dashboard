@@ -124,7 +124,7 @@
   <div id="map"></div>
 
   <div class="sector-bars">
-    <div class="sector-bar sector-water">Water & Sanitation: <span id="waterPercent">0%</span></div>
+    <div class="sector-bar sector-water">Water: <span id="waterPercent">0%</span></div>
     <div class="bar-container">
       <div id="waterBar" class="bar-fill sector-water" style="width: 0%"></div>
     </div>
@@ -192,7 +192,7 @@
 
     // Color per sector
     const sectorColors = {
-      "Water & Sanitation": "#007bff", // Blue
+      "Water": "#007bff", // Blue
       Energy: "#ffc107", // Amber
       Transport: "#28a745", // Green
       Others: "#6c757d", // Gray
@@ -239,7 +239,7 @@
     // Compute submission percentages per sector
     function computeSectorStats(data) {
       const counts = {
-        "Water & Sanitation": 0,
+        Water: 0,
         Energy: 0,
         Transport: 0,
         Others: 0,
@@ -261,8 +261,8 @@
 
     // Render sector bars with percentages
     function renderSectorBars(percentages) {
-      document.getElementById("waterPercent").innerText = percentages["Water & Sanitation"] + "%";
-      document.getElementById("waterBar").style.width = percentages["Water & Sanitation"] + "%";
+      document.getElementById("waterPercent").innerText = percentages["Water"] + "%";
+      document.getElementById("waterBar").style.width = percentages["Water"] + "%";
 
       document.getElementById("energyPercent").innerText = percentages["Energy"] + "%";
       document.getElementById("energyBar").style.width = percentages["Energy"] + "%";
