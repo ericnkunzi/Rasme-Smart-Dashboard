@@ -22,7 +22,7 @@ def normalize_sector(sector_raw):
     sector = sector_raw.strip().lower()
     if sector in ["energie", "energy"]:
         return "Energy"
-    elif sector in ["water & sanitation", "eau et assainissement", "water sanitation", "Water and sanitation"]:
+    elif sector in ["water & sanitation", "eau et assainissement", "water sanitation"]:
         return "Water & Sanitation"
     elif sector == "transport":
         return "Transport"
