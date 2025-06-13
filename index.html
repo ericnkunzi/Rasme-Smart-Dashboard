@@ -67,9 +67,6 @@
       background-color: #28a745; /* Green */
     }
 
-    /* Replaced .sector-others with .sector-water for consistency */
-    /* Removed .sector-others */
-
     table {
       border-collapse: collapse;
       margin: 0 auto 10px auto;
@@ -137,12 +134,6 @@
     <div class="bar-container">
       <div id="transportBar" class="bar-fill sector-transport" style="width: 0%"></div>
     </div>
-
-    <!-- Replaced Others with Water & Sanitation -->
-    <div class="sector-bar sector-water">Water & Sanitation: <span id="othersPercent">0%</span></div>
-    <div class="bar-container">
-      <div id="othersBar" class="bar-fill sector-water" style="width: 0%"></div>
-    </div>
   </div>
 
   <h2 style="text-align:center;">Top Data Collectors (by submissions)</h2>
@@ -176,29 +167,23 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
-    // Your backend API URL serving KoboToolbox data in JSON format
     const API_URL = "https://rasmeplus-backend.onrender.com/data";
 
-    // Initialize Leaflet map centered on Rwanda
     let map;
     function initMap() {
       map = L.map("map").setView([-1.9403, 29.8739], 8);
-
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
     }
 
-    // Color per sector
     const sectorColors = {
-      "Water & Sanitation": "#007bff", // Blue
-      Energy: "#ffc107", // Amber
-      Transport: "#28a745", // Green
-      // Removed "Others"
+      "Water & Sanitation": "#007bff",
+      Energy: "#ffc107",
+      Transport: "#28a745",
     };
 
-    // Add circle markers for each submission
     function addMarkers(data) {
       if (!map) return;
       map.eachLayer((layer) => {
@@ -208,18 +193,12 @@
       });
 
       data.forEach((item) => {
-        // Replace any sector "Others" or undefined with "Water & Sanitation"
         let sector = item.sector;
         if (!sector || sector === "Others" || sector.toLowerCase() === "other") {
           sector = "Water & Sanitation";
         }
-        if (
-          item.latitude &&
-          item.longitude &&
-          sectorColors[sector]
-        ) {
+        if (item.latitude && item.longitude && sectorColors[sector]) {
           const color = sectorColors[sector] || "#000000";
-
           const circle = L.circleMarker([item.latitude, item.longitude], {
             radius: 7,
             fillColor: color,
@@ -240,7 +219,6 @@
       });
     }
 
-    // Compute submission percentages per sector
     function computeSectorStats(data) {
       const counts = {
         "Water & Sanitation": 0,
@@ -264,7 +242,6 @@
       return { counts, percentages };
     }
 
-    // Render sector bars with percentages
     function renderSectorBars(percentages) {
       document.getElementById("waterPercent").innerText = percentages["Water & Sanitation"] + "%";
       document.getElementById("waterBar").style.width = percentages["Water & Sanitation"] + "%";
@@ -274,13 +251,8 @@
 
       document.getElementById("transportPercent").innerText = percentages["Transport"] + "%";
       document.getElementById("transportBar").style.width = percentages["Transport"] + "%";
-
-      // For the replaced "Others" bar, also show Water & Sanitation data
-      document.getElementById("othersPercent").innerText = percentages["Water & Sanitation"] + "%";
-      document.getElementById("othersBar").style.width = percentages["Water & Sanitation"] + "%";
     }
 
-    // Compute top data collectors by submission count
     function getTopCollectors(data) {
       const collectorMap = {};
       data.forEach((item) => {
@@ -306,10 +278,9 @@
       }));
 
       collectors.sort((a, b) => b.submissions - a.submissions);
-      return collectors.slice(0, 10); // Top 10
+      return collectors.slice(0, 10);
     }
 
-    // Render top collectors table
     function renderCollectorTable(collectors) {
       const tbody = document.getElementById("collectorTableBody");
       tbody.innerHTML = "";
@@ -325,10 +296,8 @@
       });
     }
 
-    // Render submissions timeline chart for last 30 days
     let timelineChart;
     function renderTimelineChart(data) {
-      // Create a map of date strings to counts
       const today = new Date();
       const dateCounts = {};
 
@@ -387,34 +356,25 @@
       });
     }
 
-    // Main fetch and render function
     async function loadData() {
       try {
         const res = await fetch(API_URL);
         const data = await res.json();
 
-        // Add markers to map
         addMarkers(data);
-
-        // Compute and render sector stats bars
         const { counts, percentages } = computeSectorStats(data);
         renderSectorBars(percentages);
 
-        // Render top collectors table
         const topCollectors = getTopCollectors(data);
         renderCollectorTable(topCollectors);
 
-        // Update total submissions
         document.getElementById("totalSubmissions").innerText = `Total submissions: ${data.length}`;
-
-        // Render timeline chart
         renderTimelineChart(data);
       } catch (error) {
         console.error("Failed to fetch or render data:", error);
       }
     }
 
-    // Initialize map and load data on page load
     window.onload = () => {
       initMap();
       loadData();
